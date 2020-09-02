@@ -1,0 +1,3 @@
+include ':networkbus'
+include ':app'
+rootProject.name = "NetworkBus"
