@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.util.Log;
 
-import com.kiscode.networkbus.listener.NetChangeListener;
+import com.kiscode.networkbus.NetworkBus;
 import com.kiscode.networkbus.type.NetType;
 import com.kiscode.networkbus.util.Constant;
 import com.kiscode.networkbus.util.NetworkUtil;
@@ -17,8 +17,6 @@ import com.kiscode.networkbus.util.NetworkUtil;
  * Date : 2020/9/2 13:56
  **/
 public class NetworkReceiver extends BroadcastReceiver {
-    private NetChangeListener netChangeListener;
-
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) {
@@ -27,15 +25,8 @@ public class NetworkReceiver extends BroadcastReceiver {
 
         if (ConnectivityManager.CONNECTIVITY_ACTION.equalsIgnoreCase(intent.getAction())) {
             NetType netType = NetworkUtil.getNetType(context);
-            Log.i(Constant.LOG, "network change:" + netType);
-
-            if (netChangeListener != null) {
-                netChangeListener.onChange(netType);
-            }
+//            Log.i(Constant.LOG, "network change:" + netType);
+            NetworkBus.getDefault().post(netType);
         }
-    }
-
-    public void setOnChangeListener(NetChangeListener listener) {
-        this.netChangeListener = listener;
     }
 }
