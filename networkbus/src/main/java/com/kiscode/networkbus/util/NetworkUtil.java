@@ -40,10 +40,6 @@ public class NetworkUtil {
                 .getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
         int ipAddress = wifiInfo == null ? 0 : wifiInfo.getIpAddress();
-        if (mWifiManager.isWifiEnabled() && ipAddress != 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return mWifiManager.isWifiEnabled() && ipAddress != 0;
     }
 } 
