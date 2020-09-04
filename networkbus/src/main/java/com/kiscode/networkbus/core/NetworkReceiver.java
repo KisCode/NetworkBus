@@ -1,4 +1,4 @@
-package com.kiscode.networkbus.receiver;
+package com.kiscode.networkbus.core;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
