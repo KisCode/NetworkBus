@@ -1,5 +1,6 @@
 package com.kiscode.networkbus;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -53,13 +54,14 @@ public class NetworkBus {
 
     public void init(Application application) {
         this.application = application;
+        //在Android 5.0之后版本新增了NetworkMannager监听网络变化
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            NetworkCallbackImp networkCallbackImp = new NetworkCallbackImp();
+            NetworkCallbackImp networkCallbackImp = new NetworkCallbackImp(application.getApplicationContext());
             NetworkRequest networkRequest = new NetworkRequest.Builder().build();
             ConnectivityManager connectivityManager = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
             assert connectivityManager != null;
             connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
-        }else {
+        } else {
             //注册广播
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
@@ -69,6 +71,9 @@ public class NetworkBus {
     }
 
     public Application getApplication() {
+        if (application == null) {
+            throw new RuntimeException("NetworkBus is not inint!");
+        }
         return application;
     }
 

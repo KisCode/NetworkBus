@@ -3,10 +3,7 @@ package com.kiscode.networkbus.util;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 
-import com.kiscode.networkbus.NetworkBus;
 import com.kiscode.networkbus.type.NetType;
 
 /**
@@ -14,6 +11,7 @@ import com.kiscode.networkbus.type.NetType;
  * Author: keno
  * Date : 2020/9/2 18:04
  **/
+
 public class NetworkUtil {
     public static boolean isNetworkAvailable(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -37,11 +35,4 @@ public class NetworkUtil {
             return NetType.NONE;
         }
     }
-
-    public static boolean isWiFiActive(Context context) {
-        WifiManager mWifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
-        int ipAddress = wifiInfo == null ? 0 : wifiInfo.getIpAddress();
-        return mWifiManager.isWifiEnabled() && ipAddress != 0;
-    }
-} 
+}
