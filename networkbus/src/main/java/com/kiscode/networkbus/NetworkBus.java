@@ -1,12 +1,18 @@
 package com.kiscode.networkbus;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
+import android.content.Context;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.NetworkRequest;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 
 import com.kiscode.networkbus.annotation.NetSubscribe;
 import com.kiscode.networkbus.bean.NetSubcribeMethodModel;
-import com.kiscode.networkbus.receiver.NetworkReceiver;
+import com.kiscode.networkbus.core.NetworkCallbackImp;
+import com.kiscode.networkbus.core.NetworkReceiver;
 import com.kiscode.networkbus.type.NetType;
 import com.kiscode.networkbus.type.NetTypeFilter;
 
@@ -46,17 +52,30 @@ public class NetworkBus {
         return instance;
     }
 
-
     public void init(Application application) {
         this.application = application;
-
-        //注册广播
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        networkReceiver = new NetworkReceiver();
-        application.registerReceiver(networkReceiver, intentFilter);
+        //在Android 5.0之后版本新增了NetworkMannager监听网络变化
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            NetworkCallbackImp networkCallbackImp = new NetworkCallbackImp(application.getApplicationContext());
+            NetworkRequest networkRequest = new NetworkRequest.Builder().build();
+            ConnectivityManager connectivityManager = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
+            assert connectivityManager != null;
+            connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
+        } else {
+            //注册广播
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+            networkReceiver = new NetworkReceiver();
+            application.registerReceiver(networkReceiver, intentFilter);
+        }
     }
 
+    public Application getApplication() {
+        if (application == null) {
+            throw new RuntimeException("NetworkBus is not inint!");
+        }
+        return application;
+    }
 
     public void post(NetType currentNetType) {
         //通知 总线发送
