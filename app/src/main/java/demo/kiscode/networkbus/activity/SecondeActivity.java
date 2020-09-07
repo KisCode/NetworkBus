@@ -33,7 +33,7 @@ public class SecondeActivity extends AppCompatActivity {
     }
 
     @NetSubscribe(NetTypeFilter.NONE)
-    private void netChange(NetType netType) {
+    private void netChange(int i) {
         Log.i(Constant.LOG, "SecondeActivity network off");
     }
 }
