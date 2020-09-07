@@ -51,7 +51,6 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
         super.onCapabilitiesChanged(network, networkCapabilities);
         //网络发生变化回调 执行在ConnectivityThread 的子线程
-        Log.i(TAG,  "onCapabilitiesChanged:" + networkCapabilities);
         if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
             if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 //Wifi
@@ -64,7 +63,7 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     }
 
     private void post(NetType netType) {
-        Log.i(TAG, Thread.currentThread().getName() + "\tonCapabilitiesChanged:" + netType);
+        Log.i(TAG, "onCapabilitiesChanged:" + netType + "\t in " + Thread.currentThread().getName());
         mHandler.post(() -> NetworkBus.getDefault().post(netType));
     }
 }

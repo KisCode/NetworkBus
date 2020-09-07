@@ -16,10 +16,11 @@ import com.kiscode.networkbus.type.NetTypeFilter;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Description: 网络监听总线控制器
@@ -33,10 +34,10 @@ public class NetworkBus {
     private Application application;
     private NetworkReceiver networkReceiver;
 
-    private Map<Object, List<NetSubcribeMethodModel>> netSubcribeMap;
+    private ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubcribeMap;
 
     private NetworkBus() {
-        netSubcribeMap = new HashMap<>();
+        netSubcribeMap = new ConcurrentHashMap<>();
     }
 
     public static NetworkBus getDefault() {
@@ -115,7 +116,9 @@ public class NetworkBus {
     private void subscribeMethodInvoke(NetType netType, Object object, NetSubcribeMethodModel netSubcribeMethodModel) {
         try {
             Method method = netSubcribeMethodModel.getMethod();
-            method.setAccessible(true); //私有方法进行授权
+            if (Modifier.isPrivate(method.getModifiers())) {
+                method.setAccessible(true); //私有方法进行授权
+            }
             method.invoke(object, netType);
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
@@ -128,7 +131,9 @@ public class NetworkBus {
         }
         List<NetSubcribeMethodModel> methodObjList = findNetSubscribeAnnotationMethod(object);
 
-        netSubcribeMap.put(object, methodObjList);
+        synchronized (this) {
+            netSubcribeMap.put(object, methodObjList);
+        }
     }
 
     public void unregister(Object object) {
@@ -143,7 +148,6 @@ public class NetworkBus {
         //获取指定类中所有方法
         Method[] methods = object.getClass().getDeclaredMethods();
         for (Method method : methods) {
-
             //遍历 所有被NetSubscribe注解的方法
             NetSubscribe netSubscribeAnnotation = method.getAnnotation(NetSubscribe.class);
             if (netSubscribeAnnotation == null) {
@@ -151,6 +155,13 @@ public class NetworkBus {
             }
 
             String methodName = method.getDeclaringClass().getName() + "." + method.getName();
+            //@NetSubscribe 注解方法修饰类型必须为非static、非抽象方法
+            if (Modifier.isStatic(method.getModifiers())
+                    || Modifier.isAbstract(method.getModifiers())
+            ) {
+                throw new NetworkBusException("@NetSubscribe method " + methodName +
+                        " is a illegal ,method must be non-static, and non-abstract");
+            }
 
             //遍历 方法的参数长度
             Class<?>[] parameterTypes = method.getParameterTypes();
@@ -164,7 +175,7 @@ public class NetworkBus {
             if (!parameterType.isAssignableFrom(NetType.class)) {
                 throw new NetworkBusException("@NetSubscribe method "
                         + methodName
-                        +" is illegal, parameterType must isAssignableFrom NetType");
+                        + " is illegal, parameterType must isAssignableFrom NetType");
             }
             NetTypeFilter netTypeFilter = netSubscribeAnnotation.value();
             netSubcribeMethodObjList.add(new NetSubcribeMethodModel(netTypeFilter, parameterType, method));
