@@ -1,27 +1,26 @@
 package com.kiscode.networkbus;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkRequest;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 
 import com.kiscode.networkbus.annotation.NetSubscribe;
 import com.kiscode.networkbus.bean.NetSubcribeMethodModel;
 import com.kiscode.networkbus.core.NetworkCallbackImp;
 import com.kiscode.networkbus.core.NetworkReceiver;
+import com.kiscode.networkbus.exception.NetworkBusException;
 import com.kiscode.networkbus.type.NetType;
 import com.kiscode.networkbus.type.NetTypeFilter;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Description: 网络监听总线控制器
@@ -35,10 +34,10 @@ public class NetworkBus {
     private Application application;
     private NetworkReceiver networkReceiver;
 
-    private Map<Object, List<NetSubcribeMethodModel>> netSubcribeMap;
+    private ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubcribeMap;
 
     private NetworkBus() {
-        netSubcribeMap = new HashMap<>();
+        netSubcribeMap = new ConcurrentHashMap<>();
     }
 
     public static NetworkBus getDefault() {
@@ -117,7 +116,9 @@ public class NetworkBus {
     private void subscribeMethodInvoke(NetType netType, Object object, NetSubcribeMethodModel netSubcribeMethodModel) {
         try {
             Method method = netSubcribeMethodModel.getMethod();
-            method.setAccessible(true); //私有方法进行授权
+            if (Modifier.isPrivate(method.getModifiers())) {
+                method.setAccessible(true); //私有方法进行授权
+            }
             method.invoke(object, netType);
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
@@ -130,7 +131,9 @@ public class NetworkBus {
         }
         List<NetSubcribeMethodModel> methodObjList = findNetSubscribeAnnotationMethod(object);
 
-        netSubcribeMap.put(object, methodObjList);
+        synchronized (this) {
+            netSubcribeMap.put(object, methodObjList);
+        }
     }
 
     public void unregister(Object object) {
@@ -151,16 +154,28 @@ public class NetworkBus {
                 continue;
             }
 
+            String methodName = method.getDeclaringClass().getName() + "." + method.getName();
+            //@NetSubscribe 注解方法修饰类型必须为非static、非抽象方法
+            if (Modifier.isStatic(method.getModifiers())
+                    || Modifier.isAbstract(method.getModifiers())
+            ) {
+                throw new NetworkBusException("@NetSubscribe method " + methodName +
+                        " is a illegal ,method must be non-static, and non-abstract");
+            }
+
             //遍历 方法的参数长度
             Class<?>[] parameterTypes = method.getParameterTypes();
             if (parameterTypes.length != 1) {
-                continue;
+                throw new NetworkBusException("@NetSubscribe method " + methodName +
+                        "must have exactly 1 parameter but has " + parameterTypes.length);
             }
 
             Class<?> parameterType = parameterTypes[0];
             //方法参数类型未NetType
             if (!parameterType.isAssignableFrom(NetType.class)) {
-                continue;
+                throw new NetworkBusException("@NetSubscribe method "
+                        + methodName
+                        + " is illegal, parameterType must isAssignableFrom NetType");
             }
             NetTypeFilter netTypeFilter = netSubscribeAnnotation.value();
             netSubcribeMethodObjList.add(new NetSubcribeMethodModel(netTypeFilter, parameterType, method));

@@ -25,7 +25,7 @@ public class NetworkReceiver extends BroadcastReceiver {
 
         if (ConnectivityManager.CONNECTIVITY_ACTION.equalsIgnoreCase(intent.getAction())) {
             NetType netType = NetworkUtil.getNetType(context);
-//            Log.i(Constant.LOG, "network change:" + netType);
+            Log.i(Constant.LOG, "network onReceive change:" + netType);
             NetworkBus.getDefault().post(netType);
         }
     }
