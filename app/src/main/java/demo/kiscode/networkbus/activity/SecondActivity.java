@@ -12,7 +12,7 @@ import com.kiscode.networkbus.util.Constant;
 
 import demo.kiscode.networkbus.R;
 
-public class SecondeActivity extends AppCompatActivity {
+public class SecondActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +34,6 @@ public class SecondeActivity extends AppCompatActivity {
 
     @NetSubscribe(NetTypeFilter.NONE)
     private void netChange(NetType netType) {
-        Log.i(Constant.LOG, "SecondeActivity network off");
+        Log.i(Constant.LOG, "SecondActivity network off");
     }
 }

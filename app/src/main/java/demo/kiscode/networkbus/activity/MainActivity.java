@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initViews() {
         findViewById(R.id.btnSecond).setOnClickListener(v -> {
-            startActivity(new Intent(this, SecondeActivity.class));
+            startActivity(new Intent(this, SecondActivity.class));
         });
         findViewById(R.id.btnDialogFragment).setOnClickListener(v -> {
             TestDialogFragment editDialogFragment = new TestDialogFragment();

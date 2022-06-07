@@ -17,4 +17,5 @@ public class DemoApplication extends Application {
         //初始化网络监听总线
         NetworkBus.getDefault().init(this);
     }
+
 }
