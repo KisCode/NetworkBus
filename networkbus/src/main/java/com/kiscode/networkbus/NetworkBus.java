@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkRequest;
+import android.os.Build;
 
 import com.kiscode.networkbus.annotation.NetSubscribe;
 import com.kiscode.networkbus.bean.NetSubcribeMethodModel;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Description: 网络监听总线控制器
- * 所有页面Actvity/Fragment均通过单例的NetworkBus进行注册
+ * 所有页面Activity/Fragment均通过单例的NetworkBus进行注册
  * 当网络发生变化时，通知所有注册的页面，通过反射方法回调监听方法
  * Author: keno
  * Date : 2020/9/2 13:54
@@ -32,12 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NetworkBus {
     private static NetworkBus instance;
     private Application application;
-    private NetworkReceiver networkReceiver;
 
-    private ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubcribeMap;
+    private final ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubscribeMap;
 
     private NetworkBus() {
-        netSubcribeMap = new ConcurrentHashMap<>();
+        netSubscribeMap = new ConcurrentHashMap<>();
     }
 
     public static NetworkBus getDefault() {
@@ -53,18 +53,23 @@ public class NetworkBus {
 
     public void init(Application application) {
         this.application = application;
-        //在Android 5.0之后版本新增了NetworkMannager监听网络变化
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+        //在Android 5.0之后版本新增了NetworkManager监听网络变化
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             NetworkCallbackImp networkCallbackImp = new NetworkCallbackImp(application.getApplicationContext());
             NetworkRequest networkRequest = new NetworkRequest.Builder().build();
             ConnectivityManager connectivityManager = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
             assert connectivityManager != null;
-            connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
+//            connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                connectivityManager.registerDefaultNetworkCallback(networkCallbackImp);
+            }else{
+                connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
+            }
         } else {
             //注册广播
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-            networkReceiver = new NetworkReceiver();
+            NetworkReceiver networkReceiver = new NetworkReceiver();
             application.registerReceiver(networkReceiver, intentFilter);
         }
     }
@@ -78,7 +83,7 @@ public class NetworkBus {
 
     public void post(NetType currentNetType) {
         //通知 总线发送
-        for (Map.Entry<Object, List<NetSubcribeMethodModel>> entry : netSubcribeMap.entrySet()) {
+        for (Map.Entry<Object, List<NetSubcribeMethodModel>> entry : netSubscribeMap.entrySet()) {
             Object object = entry.getKey();
             List<NetSubcribeMethodModel> methodModelList = entry.getValue();
             for (NetSubcribeMethodModel netSubcribeMethodModel : methodModelList) {
@@ -111,11 +116,11 @@ public class NetworkBus {
      * 通过反射执行网络监听方法
      * @param netType 网络类型
      * @param object 监听所在类对象
-     * @param netSubcribeMethodModel 监听的方法对象
+     * @param netSubscribeMethodModel 监听的方法对象
      */
-    private void subscribeMethodInvoke(NetType netType, Object object, NetSubcribeMethodModel netSubcribeMethodModel) {
+    private void subscribeMethodInvoke(NetType netType, Object object, NetSubcribeMethodModel netSubscribeMethodModel) {
         try {
-            Method method = netSubcribeMethodModel.getMethod();
+            Method method = netSubscribeMethodModel.getMethod();
             if (Modifier.isPrivate(method.getModifiers())) {
                 method.setAccessible(true); //私有方法进行授权
             }
@@ -126,25 +131,25 @@ public class NetworkBus {
     }
 
     public void register(Object object) {
-        if (netSubcribeMap == null || netSubcribeMap.containsKey(object)) {
+        if (netSubscribeMap.containsKey(object)) {
             return;
         }
         List<NetSubcribeMethodModel> methodObjList = findNetSubscribeAnnotationMethod(object);
 
         synchronized (this) {
-            netSubcribeMap.put(object, methodObjList);
+            netSubscribeMap.put(object, methodObjList);
         }
     }
 
     public void unregister(Object object) {
-        if (netSubcribeMap == null || !netSubcribeMap.containsKey(object)) {
+        if (!netSubscribeMap.containsKey(object)) {
             return;
         }
-        netSubcribeMap.remove(object);
+        netSubscribeMap.remove(object);
     }
 
     private List<NetSubcribeMethodModel> findNetSubscribeAnnotationMethod(Object object) {
-        List<NetSubcribeMethodModel> netSubcribeMethodObjList = new ArrayList<>();
+        List<NetSubcribeMethodModel> netSubscribeMethodObjList = new ArrayList<>();
         //获取指定类中所有方法
         Method[] methods = object.getClass().getDeclaredMethods();
         for (Method method : methods) {
@@ -178,8 +183,8 @@ public class NetworkBus {
                         + " is illegal, parameterType must isAssignableFrom NetType");
             }
             NetTypeFilter netTypeFilter = netSubscribeAnnotation.value();
-            netSubcribeMethodObjList.add(new NetSubcribeMethodModel(netTypeFilter, parameterType, method));
+            netSubscribeMethodObjList.add(new NetSubcribeMethodModel(netTypeFilter, parameterType, method));
         }
-        return netSubcribeMethodObjList;
+        return netSubscribeMethodObjList;
     }
 }

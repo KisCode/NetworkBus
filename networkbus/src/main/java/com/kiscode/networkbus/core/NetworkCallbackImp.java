@@ -33,25 +33,34 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     public void onAvailable(@NonNull Network network) {
         super.onAvailable(network);
         //网络已连接
-//        Log.i(TAG, Thread.currentThread().getName() + "\t onAvailable" );
+//        Log.i(TAG2, Thread.currentThread().getName() + "\t onAvailable");
     }
 
     @Override
     public void onLost(@NonNull Network network) {
         super.onLost(network);
-//        Log.i(TAG, Thread.currentThread().getName() + "\t onLost" );
+
         if (NetworkUtil.isNetworkAvailable(context)) {
             return;
         }
+        Log.i(TAG, Thread.currentThread().getName() + "\t onLost");
         //网络断开连接
         post(NetType.NONE);
+    }
+
+    @Override
+    public void onUnavailable() {
+        super.onUnavailable();
+//        Log.i(TAG2, Thread.currentThread().getName() + "\t onUnavailable");
     }
 
     @Override
     public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
         super.onCapabilitiesChanged(network, networkCapabilities);
         //网络发生变化回调 执行在ConnectivityThread 的子线程
-        if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+        Log.i(TAG, "onCapabilitiesChanged 可以上网：" + networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+//        NetworkCapabilities.NET_CAPABILITY_INTERNET
+        if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
             if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 //Wifi
                 post(NetType.WIFI);
