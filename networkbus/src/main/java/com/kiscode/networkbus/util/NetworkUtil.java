@@ -19,9 +19,10 @@ import com.kiscode.networkbus.type.NetType;
 public class NetworkUtil {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public static boolean isNetworkAvailable(Context context) {
-
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         assert connectivityManager != null;
+/*
+        return connectivityManager.isActiveNetworkMetered();*/
 /*
         //wifi网络状态
         NetworkInfo wifiNetWorkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
@@ -36,7 +37,6 @@ public class NetworkUtil {
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
         */
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             Network activeNetwork = connectivityManager.getActiveNetwork();
             if (activeNetwork == null) return false;

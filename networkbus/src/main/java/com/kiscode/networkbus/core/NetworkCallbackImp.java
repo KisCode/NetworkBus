@@ -33,7 +33,6 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     public void onAvailable(@NonNull Network network) {
         super.onAvailable(network);
         //网络已连接
-//        Log.i(TAG2, Thread.currentThread().getName() + "\t onAvailable");
     }
 
     @Override
@@ -51,7 +50,6 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     @Override
     public void onUnavailable() {
         super.onUnavailable();
-//        Log.i(TAG2, Thread.currentThread().getName() + "\t onUnavailable");
     }
 
     @Override

@@ -35,29 +35,25 @@ import java.util.concurrent.atomic.AtomicReference;
 public class NetworkBus {
     private static NetworkBus instance;
     private final ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubscribeMap;
-    //是否初始化加载成功标记位
-    private static AtomicReference<NetType> currentNetTypeAtomicReference;
+    //标记当前网络状态， 当接收到新网络状态时进行比对
+    private final AtomicReference<NetType> currentNetTypeAtomicReference;
     private Application application;
 
-    private NetworkBus() {
+    private NetworkBus(Application application) {
         netSubscribeMap = new ConcurrentHashMap<>();
+        currentNetTypeAtomicReference = new AtomicReference<>(NetworkUtil.getNetType(application));
     }
 
     public static NetworkBus getDefault() {
         if (instance == null) {
-            synchronized (NetworkBus.class) {
-                if (instance == null) {
-                    instance = new NetworkBus();
-                }
-            }
+            throw new RuntimeException("NetworkBus is not init!");
         }
         return instance;
     }
 
 
-    public void init(Application application) {
-        this.application = application;
-        currentNetTypeAtomicReference = new AtomicReference<>(NetworkUtil.getNetType(application));
+    public static void init(Application application) {
+        instance = new NetworkBus(application);
 
         //在Android 5.0之后版本新增了NetworkManager监听网络变化
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -86,7 +82,7 @@ public class NetworkBus {
 
     public Application getApplication() {
         if (application == null) {
-            throw new RuntimeException("NetworkBus is not inint!");
+            throw new RuntimeException("NetworkBus is not init!");
         }
         return application;
     }

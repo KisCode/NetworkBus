@@ -15,7 +15,7 @@ public class DemoApplication extends Application {
         super.onCreate();
 
         //初始化网络监听总线
-        NetworkBus.getDefault().init(this);
+        NetworkBus.init(this);
     }
 
 }
