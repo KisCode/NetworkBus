@@ -12,7 +12,9 @@ import android.util.Log;
 
 import com.kiscode.networkbus.NetworkBus;
 import com.kiscode.networkbus.type.NetType;
-import com.kiscode.networkbus.util.NetworkUtil;
+import com.kiscode.networkbus.util.NetUtil;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Description: 网络监听回调
@@ -22,11 +24,15 @@ import com.kiscode.networkbus.util.NetworkUtil;
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     private static final String TAG = "NetworkCallbackImp";
+    private static final int TIME_DISTANCE = 2000;
+    //标记当前网络状态， 当接收到新网络状态时进行比对
+    private final AtomicReference<NetType> currentNetTypeAtomicReference;
     private Handler mHandler = new Handler();
     private Context context;
 
     public NetworkCallbackImp(Context context) {
         this.context = context;
+        currentNetTypeAtomicReference = new AtomicReference<>();
     }
 
     @Override
@@ -38,13 +44,23 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
     @Override
     public void onLost(@NonNull Network network) {
         super.onLost(network);
+        Log.i(TAG, Thread.currentThread().getName() + "\t onLost " + NetUtil.isNetworkAvailable(context));
 
-        if (NetworkUtil.isNetworkAvailable(context)) {
+        if (NetUtil.isNetworkAvailable(context)) {
             return;
         }
-        Log.i(TAG, Thread.currentThread().getName() + "\t onLost");
-        //网络断开连接
-        post(NetType.NONE);
+
+        if (currentNetTypeAtomicReference.get() == NetType.WIFI) {
+            //延迟2秒再次检测网络状态 并发送状态
+            mHandler.postDelayed(() -> {
+                if (!NetUtil.isNetworkAvailable(context)) {
+                    post(NetType.NONE);
+                }
+            }, TIME_DISTANCE);
+        } else {
+            //网络断开连接
+            post(NetType.NONE);
+        }
     }
 
     @Override
@@ -71,6 +87,9 @@ public class NetworkCallbackImp extends ConnectivityManager.NetworkCallback {
 
     private void post(NetType netType) {
         Log.i(TAG, "onCapabilitiesChanged:" + netType + "\t in " + Thread.currentThread().getName());
-        mHandler.post(() -> NetworkBus.getDefault().post(netType));
+        mHandler.post(() -> {
+            currentNetTypeAtomicReference.set(netType);
+            NetworkBus.getDefault().post(netType);
+        });
     }
 }

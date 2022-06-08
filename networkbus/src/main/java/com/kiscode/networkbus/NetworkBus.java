@@ -4,25 +4,18 @@ import android.app.Application;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Build;
 
-import com.kiscode.networkbus.annotation.NetSubscribe;
-import com.kiscode.networkbus.bean.NetSubcribeMethodModel;
 import com.kiscode.networkbus.core.NetworkCallbackImp;
 import com.kiscode.networkbus.core.NetworkReceiver;
-import com.kiscode.networkbus.exception.NetworkBusException;
+import com.kiscode.networkbus.listener.NetChangeListener;
 import com.kiscode.networkbus.type.NetType;
-import com.kiscode.networkbus.type.NetTypeFilter;
-import com.kiscode.networkbus.util.NetworkUtil;
+import com.kiscode.networkbus.util.NetUtil;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -34,14 +27,15 @@ import java.util.concurrent.atomic.AtomicReference;
  **/
 public class NetworkBus {
     private static NetworkBus instance;
-    private final ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubscribeMap;
+    //网络监听集合
+    private final List<NetChangeListener> netChangeListenerList;
     //标记当前网络状态， 当接收到新网络状态时进行比对
     private final AtomicReference<NetType> currentNetTypeAtomicReference;
     private Application application;
 
     private NetworkBus(Application application) {
-        netSubscribeMap = new ConcurrentHashMap<>();
-        currentNetTypeAtomicReference = new AtomicReference<>(NetworkUtil.getNetType(application));
+        currentNetTypeAtomicReference = new AtomicReference<>(NetUtil.getNetType(application));
+        netChangeListenerList = new CopyOnWriteArrayList<>();
     }
 
     public static NetworkBus getDefault() {
@@ -59,10 +53,9 @@ public class NetworkBus {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             NetworkCallbackImp networkCallbackImp = new NetworkCallbackImp(application.getApplicationContext());
             NetworkRequest networkRequest = new NetworkRequest.Builder()
-//                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-//                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-//                    .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
-//                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                     .build();
             ConnectivityManager connectivityManager = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
             assert connectivityManager != null;
@@ -92,111 +85,28 @@ public class NetworkBus {
         if (lastNetType == currentNetType) {
             return;
         }
+
         currentNetTypeAtomicReference.set(currentNetType);
-
         //通知 总线发送
-        for (Map.Entry<Object, List<NetSubcribeMethodModel>> entry : netSubscribeMap.entrySet()) {
-            Object object = entry.getKey();
-            List<NetSubcribeMethodModel> methodModelList = entry.getValue();
-            for (NetSubcribeMethodModel netSubcribeMethodModel : methodModelList) {
-                switch (netSubcribeMethodModel.getNetTypeFilter()) {
-                    //触发条件
-                    case ALL:
-                        subscribeMethodInvoke(currentNetType, object, netSubcribeMethodModel);
-                        break;
-                    case WIFI:
-                        if (NetType.WIFI == currentNetType || NetType.NONE == currentNetType) {
-                            subscribeMethodInvoke(currentNetType, object, netSubcribeMethodModel);
-                        }
-                        break;
-                    case MOBILE:
-                        if (NetType.MOBILE == currentNetType || NetType.NONE == currentNetType) {
-                            subscribeMethodInvoke(currentNetType, object, netSubcribeMethodModel);
-                        }
-                        break;
-                    case NONE:
-                        if (NetType.NONE == currentNetType) {
-                            subscribeMethodInvoke(currentNetType, object, netSubcribeMethodModel);
-                        }
-                        break;
-                }
-            }
+        for (NetChangeListener netChangeListener : netChangeListenerList) {
+            netChangeListener.onChange(lastNetType, currentNetType);
         }
     }
 
-    /***
-     * 通过反射执行网络监听方法
-     * @param netType 网络类型
-     * @param object 监听所在类对象
-     * @param netSubscribeMethodModel 监听的方法对象
-     */
-    private void subscribeMethodInvoke(NetType netType, Object object, NetSubcribeMethodModel netSubscribeMethodModel) {
-        try {
-            Method method = netSubscribeMethodModel.getMethod();
-            if (Modifier.isPrivate(method.getModifiers())) {
-                method.setAccessible(true); //私有方法进行授权
-            }
-            method.invoke(object, netType);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void register(Object object) {
-        if (netSubscribeMap.containsKey(object)) {
+    public void register(NetChangeListener netChangeListener) {
+        if (netChangeListenerList.contains(netChangeListener)) {
             return;
         }
-        List<NetSubcribeMethodModel> methodObjList = findNetSubscribeAnnotationMethod(object);
 
         synchronized (this) {
-            netSubscribeMap.put(object, methodObjList);
+            netChangeListenerList.add(netChangeListener);
         }
     }
 
-    public void unregister(Object object) {
-        if (!netSubscribeMap.containsKey(object)) {
+    public void unregister(NetChangeListener netChangeListener) {
+        if (!netChangeListenerList.contains(netChangeListener)) {
             return;
         }
-        netSubscribeMap.remove(object);
-    }
-
-    private List<NetSubcribeMethodModel> findNetSubscribeAnnotationMethod(Object object) {
-        List<NetSubcribeMethodModel> netSubscribeMethodObjList = new ArrayList<>();
-        //获取指定类中所有方法
-        Method[] methods = object.getClass().getDeclaredMethods();
-        for (Method method : methods) {
-            //遍历 所有被NetSubscribe注解的方法
-            NetSubscribe netSubscribeAnnotation = method.getAnnotation(NetSubscribe.class);
-            if (netSubscribeAnnotation == null) {
-                continue;
-            }
-
-            String methodName = method.getDeclaringClass().getName() + "." + method.getName();
-            //@NetSubscribe 注解方法修饰类型必须为非static、非抽象方法
-            if (Modifier.isStatic(method.getModifiers())
-                    || Modifier.isAbstract(method.getModifiers())
-            ) {
-                throw new NetworkBusException("@NetSubscribe method " + methodName +
-                        " is a illegal ,method must be non-static, and non-abstract");
-            }
-
-            //遍历 方法的参数长度
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            if (parameterTypes.length != 1) {
-                throw new NetworkBusException("@NetSubscribe method " + methodName +
-                        "must have exactly 1 parameter but has " + parameterTypes.length);
-            }
-
-            Class<?> parameterType = parameterTypes[0];
-            //方法参数类型未NetType
-            if (!parameterType.isAssignableFrom(NetType.class)) {
-                throw new NetworkBusException("@NetSubscribe method "
-                        + methodName
-                        + " is illegal, parameterType must isAssignableFrom NetType");
-            }
-            NetTypeFilter netTypeFilter = netSubscribeAnnotation.value();
-            netSubscribeMethodObjList.add(new NetSubcribeMethodModel(netTypeFilter, parameterType, method));
-        }
-        return netSubscribeMethodObjList;
+        netChangeListenerList.remove(netChangeListener);
     }
 }

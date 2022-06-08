@@ -15,28 +15,11 @@ import com.kiscode.networkbus.type.NetType;
  * Author: keno
  * Date : 2020/9/2 18:04
  **/
-
-public class NetworkUtil {
+public class NetUtil {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public static boolean isNetworkAvailable(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         assert connectivityManager != null;
-/*
-        return connectivityManager.isActiveNetworkMetered();*/
-/*
-        //wifi网络状态
-        NetworkInfo wifiNetWorkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-        //移动网络状态
-        NetworkInfo mobileNetWorkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
-
-        Log.i(Constant.LOG, wifiNetWorkInfo.isConnected() + "\t" + mobileNetWorkInfo.isConnected());
-        return (wifiNetWorkInfo != null && wifiNetWorkInfo.isConnected())
-                || (mobileNetWorkInfo != null && mobileNetWorkInfo.isConnected());*/
-
-/*
-        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
-        */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             Network activeNetwork = connectivityManager.getActiveNetwork();
             if (activeNetwork == null) return false;

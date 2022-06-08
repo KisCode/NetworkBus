@@ -8,5 +8,10 @@ import com.kiscode.networkbus.type.NetType;
  * Date : 2020/9/2 19:55
  **/
 public interface NetChangeListener {
-    void onChange(NetType netType);
+    /***
+     *
+     * @param lastNetType 上一个网络状态
+     * @param currentNetType 当前网络状态
+     */
+    void onChange(NetType lastNetType, NetType currentNetType);
 }

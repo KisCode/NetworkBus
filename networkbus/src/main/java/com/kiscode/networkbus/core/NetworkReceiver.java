@@ -9,7 +9,7 @@ import android.util.Log;
 import com.kiscode.networkbus.NetworkBus;
 import com.kiscode.networkbus.type.NetType;
 import com.kiscode.networkbus.util.Constant;
-import com.kiscode.networkbus.util.NetworkUtil;
+import com.kiscode.networkbus.util.NetUtil;
 
 /**
  * Description:
@@ -24,7 +24,7 @@ public class NetworkReceiver extends BroadcastReceiver {
         }
 
         if (ConnectivityManager.CONNECTIVITY_ACTION.equalsIgnoreCase(intent.getAction())) {
-            NetType netType = NetworkUtil.getNetType(context);
+            NetType netType = NetUtil.getNetType(context);
             Log.i(Constant.LOG, "network onReceive change:" + netType);
             NetworkBus.getDefault().post(netType);
         }

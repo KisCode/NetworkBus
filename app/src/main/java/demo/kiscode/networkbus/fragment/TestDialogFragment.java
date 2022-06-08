@@ -5,16 +5,9 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
-import com.kiscode.networkbus.NetworkBus;
-import com.kiscode.networkbus.annotation.NetSubscribe;
-import com.kiscode.networkbus.type.NetType;
-import com.kiscode.networkbus.type.NetTypeFilter;
-import com.kiscode.networkbus.util.Constant;
 
 import demo.kiscode.networkbus.R;
 
@@ -34,22 +27,12 @@ public class TestDialogFragment extends DialogFragment {
     @Override
     public void onResume() {
         super.onResume();
-        NetworkBus.getDefault().register(this);
-    }
-
-    @NetSubscribe(NetTypeFilter.WIFI)
-    private void onWifiChange(NetType netType) {
-        Log.i(Constant.LOG, "TestDialogFragment onWifiChange:" + netType);
-    }
-
-    @NetSubscribe(NetTypeFilter.MOBILE)
-    private void onMobileNetChange(NetType netType) {
-        Log.i(Constant.LOG, "TestDialogFragment onMobileNetChange: " + netType);
+//        NetworkBus.getDefault().register(this);
     }
 
     @Override
     public void onDismiss(DialogInterface dialog) {
         super.onDismiss(dialog);
-        NetworkBus.getDefault().unregister(this);
+//        NetworkBus.getDefault().unregister(this);
     }
 }
