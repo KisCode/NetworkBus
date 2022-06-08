@@ -14,6 +14,7 @@ import com.kiscode.networkbus.core.NetworkReceiver;
 import com.kiscode.networkbus.exception.NetworkBusException;
 import com.kiscode.networkbus.type.NetType;
 import com.kiscode.networkbus.type.NetTypeFilter;
+import com.kiscode.networkbus.util.NetworkUtil;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Description: 网络监听总线控制器
@@ -32,9 +34,10 @@ import java.util.concurrent.ConcurrentHashMap;
  **/
 public class NetworkBus {
     private static NetworkBus instance;
-    private Application application;
-
     private final ConcurrentHashMap<Object, List<NetSubcribeMethodModel>> netSubscribeMap;
+    //是否初始化加载成功标记位
+    private static AtomicReference<NetType> currentNetTypeAtomicReference;
+    private Application application;
 
     private NetworkBus() {
         netSubscribeMap = new ConcurrentHashMap<>();
@@ -51,18 +54,25 @@ public class NetworkBus {
         return instance;
     }
 
+
     public void init(Application application) {
         this.application = application;
+        currentNetTypeAtomicReference = new AtomicReference<>(NetworkUtil.getNetType(application));
+
         //在Android 5.0之后版本新增了NetworkManager监听网络变化
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             NetworkCallbackImp networkCallbackImp = new NetworkCallbackImp(application.getApplicationContext());
-            NetworkRequest networkRequest = new NetworkRequest.Builder().build();
+            NetworkRequest networkRequest = new NetworkRequest.Builder()
+//                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+//                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+//                    .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+//                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build();
             ConnectivityManager connectivityManager = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
             assert connectivityManager != null;
-//            connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 connectivityManager.registerDefaultNetworkCallback(networkCallbackImp);
-            }else{
+            } else {
                 connectivityManager.registerNetworkCallback(networkRequest, networkCallbackImp);
             }
         } else {
@@ -82,6 +92,12 @@ public class NetworkBus {
     }
 
     public void post(NetType currentNetType) {
+        NetType lastNetType = currentNetTypeAtomicReference.get();
+        if (lastNetType == currentNetType) {
+            return;
+        }
+        currentNetTypeAtomicReference.set(currentNetType);
+
         //通知 总线发送
         for (Map.Entry<Object, List<NetSubcribeMethodModel>> entry : netSubscribeMap.entrySet()) {
             Object object = entry.getKey();
